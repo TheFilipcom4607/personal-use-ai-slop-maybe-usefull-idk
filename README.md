@@ -1,4 +1,4 @@
-# personal-use-ai-slop-maybe-useful-idk
+# personal-use-ai-slop-maybe-useful-idk AKA Fun Plane Viewer
 ![image](https://assets.thefilip.com/funplaneviewer.png)
 Better gui for showing all planes caught and logged on skystats from your adsb feeder.
 
