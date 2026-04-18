@@ -750,6 +750,55 @@
     vertical-align: middle;
   }
 
+  .modal-sightings {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 0.82rem;
+  }
+  .sightings-toggle {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: border-color 0.15s;
+  }
+  .sightings-toggle:hover { border-color: var(--accent); }
+  .sightings-toggle .caret {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    transition: transform 0.15s;
+  }
+  .sightings-toggle.open .caret { transform: rotate(180deg); }
+  .sightings-list {
+    list-style: none;
+    margin-top: 10px;
+    max-height: 220px;
+    overflow-y: auto;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 0;
+  }
+  .sightings-list li {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .sightings-list li:last-child { border-bottom: none; }
+  .sightings-list li .ago { color: var(--text-dim); font-size: 0.75rem; }
+
   /* Mobile modal overrides — must come AFTER default modal styles
      so the cascade applies them. */
   @media (max-width: 640px) {
@@ -915,6 +964,7 @@
       <dl class="modal-grid" id="modalGrid"></dl>
       <div class="card-tags" id="modalTags"></div>
       <div class="card-seen" style="margin-top:14px" id="modalSeen"></div>
+      <div class="modal-sightings" id="modalSightings"></div>
     </div>
   </div>
 </div>
@@ -943,6 +993,32 @@ let inFlight = false;
 let pollTimer = null;
 let modalHex = null;
 let pendingRender = false;
+
+const SIGHTINGS_KEY = 'plane_sightings_v1';
+const SIGHTINGS_MAX = 200;
+let sightings = (() => {
+  try { return JSON.parse(localStorage.getItem(SIGHTINGS_KEY)) || {}; }
+  catch { return {}; }
+})();
+
+function recordSightings() {
+  let dirty = false;
+  for (const section of ['mil', 'gov', 'civ']) {
+    for (const p of data[section]) {
+      if (!p.hex || !p.seen_epoch) continue;
+      const list = sightings[p.hex] || [];
+      if (list[list.length - 1] !== p.seen_epoch) {
+        list.push(p.seen_epoch);
+        if (list.length > SIGHTINGS_MAX) list.splice(0, list.length - SIGHTINGS_MAX);
+        sightings[p.hex] = list;
+        dirty = true;
+      }
+    }
+  }
+  if (dirty) {
+    try { localStorage.setItem(SIGHTINGS_KEY, JSON.stringify(sightings)); } catch {}
+  }
+}
 
 const SORT_MAP = {
   'seen_desc':    { key: 'seen',     dir: 'desc' },
@@ -1024,6 +1100,8 @@ async function fetchAll(manual) {
     data.gov = gov;
     data.civ = civ;
     dataSig = newSig;
+
+    recordSightings();
 
     document.getElementById('milCount').textContent = mil.length;
     document.getElementById('govCount').textContent = gov.length;
@@ -1439,8 +1517,43 @@ function openModal(hex) {
     <span>${esc(new Date(p.seen).toLocaleString())}</span>
   `;
 
+  renderSightings(p);
+
   modalHex = hex;
   document.getElementById('modal').classList.add('open');
+}
+
+function renderSightings(p) {
+  const wrap = document.getElementById('modalSightings');
+  const list = sightings[p.hex] || [];
+  const n = list.length;
+  const label = n === 1 ? '1 time' : `${n} times`;
+  wrap.innerHTML = `
+    <button type="button" class="sightings-toggle" id="sightingsToggle" aria-expanded="false">
+      Seen ${label}
+      ${n > 0 ? '<span class="caret">▾</span>' : ''}
+    </button>
+    <ul class="sightings-list" id="sightingsList" hidden></ul>
+  `;
+  if (n === 0) return;
+  const btn = document.getElementById('sightingsToggle');
+  const ul = document.getElementById('sightingsList');
+  btn.addEventListener('click', () => {
+    const open = !ul.hidden;
+    if (open) {
+      ul.hidden = true;
+      btn.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+    } else {
+      ul.innerHTML = list.slice().reverse().map(ep => {
+        const d = new Date(ep * 1000);
+        return `<li><span>${esc(d.toLocaleString())}</span><span class="ago">${esc(timeAgo(ep))}</span></li>`;
+      }).join('');
+      ul.hidden = false;
+      btn.classList.add('open');
+      btn.setAttribute('aria-expanded', 'true');
+    }
+  });
 }
 
 function selectModalImg(el, url) {
