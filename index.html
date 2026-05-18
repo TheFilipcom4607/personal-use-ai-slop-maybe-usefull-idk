@@ -1193,7 +1193,7 @@
     <div class="app-dialog-actions" style="justify-content: flex-start; gap: 8px; flex-wrap: wrap; align-items: center;">
       <button class="btn" type="button" id="manualImageBackend" title="Change SkyStats backend URL (for Tailscale or remote access)">Change backend URL…</button>
       <button class="btn" type="button" id="manualImageSelfUpdate" title="Pull the latest index.html from GitHub main and reload">Update from GitHub…</button>
-      <span class="app-version" title="App version (bump in index.html when releasing)">v1.8.3</span>
+      <span class="app-version" title="App version (bump in index.html when releasing)">v1.8.4</span>
     </div>
   </div>
 </div>
@@ -3103,7 +3103,8 @@ document.getElementById('manualImageSelfUpdate').addEventListener('click', async
 document.getElementById('manualImageJetphotos').addEventListener('click', (e) => {
   const reg = e.currentTarget.dataset.reg;
   if (!reg) return;
-  const url = `https://www.jetphotos.com/showphotos.php?keywords-type=reg&keywords=${encodeURIComponent(reg)}&search-type=Advanced&keywords-contain=0&sort-order=4`;
+  const searchReg = reg.includes('+') ? reg.replace(/\+/g, '-') : reg;
+  const url = `https://www.jetphotos.com/showphotos.php?keywords-type=reg&keywords=${encodeURIComponent(searchReg)}&search-type=Advanced&keywords-contain=0&sort-order=4`;
   window.open(url, '_blank', 'noopener,noreferrer');
 });
 document.getElementById('manualImageGoogle').addEventListener('click', (e) => {
